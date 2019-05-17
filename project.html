@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<style>
+		canvas{
+			margin: 0 auto;
+			display: block;
+			max-width: 100%;
+			border: 2px solid black;
+		}		
+		.row{
+			display: flex;
+		}
+		h1{	margin: 0 auto;
+			max-width: 50%;
+		}
+	</style>
+	<title>Frogger Project</title>
+</head>
+<body>
+	<canvas width="500" height="570"></canvas>
+	<div class="row">
+		<h1 id="livesCounter"></h1>
+		<h1 id="levelCounter"></h1>
+	</div>
+<script>
+	var canvas=document.querySelector('canvas');
+	var ctx=canvas.getContext('2d');
+
+	var gridColumns=5;
+	var gridRows=6;
+	var tileWidth=100;
+	var tileHeight=90;
+	var upPress=false;
+	var downPress=false;
+	var leftPress=false;
+	var rightPress=false;
+	var enemyNum=2;
+	var gemNum=5;
+	var livesNum=3;
+	var levelNum=1;
+
+	document.querySelector("#livesCounter").textContent="Lives:"+livesNum
+	document.querySelector("#levelCounter").textContent="Level:"+levelNum;
+	function random(min,max){
+		return Math.floor(Math.random()*(max-min))+min;
+	}
+	function countLives(){
+		livesNum--;
+		document.querySelector("#livesCounter").textContent="Lives:"+livesNum;
+		if (livesNum==0) {
+			alert("Game Over!");
+			document.location.reload();
+		}
+	}
+	function nextLevel(){
+		gemNum+=5
+		makeGemsTrue();
+		levelNum++;
+		document.querySelector("#levelCounter").textContent="Level:"+levelNum;
+		
+		makeEnemies();
+	}
+
+	var gridImages=[]
+	function makeGrid(){
+	for (var c = 0; c <gridColumns; c++) {
+		gridImages[c]=[];
+		for (var r = 0; r < gridRows; r++) {
+			gridImages[c][r]=new Image();
+			gridImages[c][r].addEventListener("load",loadImage,false);
+			if (r==0) {
+				gridImages[c][r].src="images/water-block.png";
+			}
+			else if (r>0&&r<4) {
+				gridImages[c][r].src="images/stone-block.png";
+			}
+			else if (r>3) {
+				gridImages[c][r].src="images/grass-block.png";
+			};
+			
+		};
+
+	};
+
+	}
+	
+
+makeGrid();
+var playerOne=new Player((canvas.width-tileWidth)/2,canvas.height-175,"images/char-boy.png");
+	//playerOne.img.addEventListener("load",loadPlayer,false);
+
+	function Player(x,y,source,){
+		this.x=x;
+		this.y=y;
+		this.img=new Image();
+		this.img.src=source;
+		this.dx=tileWidth;
+		this.dy=tileHeight;
+		}
+
+	Player.prototype.draw=function(){
+		ctx.drawImage(this.img,this.x,this.y);
+	}
+
+	Player.prototype.move=function(){
+		if (upPress&&this.y>0) {
+			this.y-=this.dy;
+		}
+		if (downPress&&this.y<canvas.height-tileHeight*2) {
+			this.y+=this.dy;
+		}
+		if (rightPress&&this.x<canvas.width-tileWidth&&this.y>0) {
+			this.x+=this.dx;
+		}
+		if (leftPress&&this.x>0&&this.y>0) {
+			this.x-=this.dx;
+		}
+		/*if (this.y<-25) {
+			this.x=(canvas.width-tileWidth)/2;
+			this.y=canvas.height-175;
+		}*/
+	}
+
+	function Enemy(x,y,speed,source){
+		Player.call(this,x,y,source);
+		this.speed=speed;
+	}
+	 Enemy.prototype=Object.create(Player.prototype);
+	 Enemy.prototype.constructor=Enemy;
+	 Enemy.prototype.update=function(){
+	 	if (this.x>canvas.width) {
+	 		this.x=-1000;
+	 	}
+	 	this.x+=this.speed;
+	 }
+	 Enemy.prototype.crash=function(){
+	 	if (playerOne.x<this.x+tileWidth&&playerOne.x>this.x&&playerOne.y>=this.y&&playerOne.y<=this.y+tileHeight) {
+	 		countLives();
+	 		playerOne.x=(canvas.width-tileWidth)/2;
+	 		playerOne.y=canvas.height-175;
+	 		if (livesNum>0) {
+	 			alert("Watch Out!");
+	 		}
+	 	}
+	 }
+
+	 function Gem(x,y,source){
+	 	Player.call(this,x,y,source);
+	 	this.exists=true;
+	 }
+	 Gem.prototype=Object.create(Player.prototype);
+	 Gem.prototype.draw=function(){
+	 	ctx.drawImage(this.img,this.x,this.y,tileWidth,tileHeight);
+	 }
+	 Gem.prototype.colect=function(){
+	 	if (playerOne.x<this.x+tileWidth&&playerOne.x>=this.x&&playerOne.y+tileHeight>=this.y&&playerOne.y+tileHeight<=this.y+tileHeight) {
+	 		this.exists=false;
+	 		playerOne.x=(canvas.width-tileWidth)/2;
+	 		playerOne.y=canvas.height-175;
+	 		gemNum--;
+	 		if (gemNum==0) {
+	 			nextLevel();
+	 		}
+	 		}
+	 	}
+	 
+
+	 var enemies=[];
+	 //var enemyOne=new Enemy(0,)
+	 function makeEnemies(){
+	 	for (var i = 0; i < enemyNum; i++) {
+	 		var enemy=new Enemy(random(-1000,canvas.width),random(0,3)*tileHeight,Math.random()/4,"images/enemy-bug.png");
+	 		enemies.push(enemy);
+	 	}
+	 }
+	 makeEnemies();
+	 var gems=[];
+	 function makeGems(){
+	 for (var i = 0; i<gemNum; i++) {
+	 	var gem=new Gem(i*tileWidth,-25,"images/Gem Blue.png");
+	 	gems.push(gem);
+	 }
+	}
+
+	document.addEventListener('keydown',keyDownAction,false);
+	document.addEventListener('keyup',keyUpAction,false);
+	function keyDownAction(e){
+		if (e.keyCode==38) {
+			upPress=true;
+			playerOne.move();
+		}
+		if (e.keyCode==40) {
+			downPress=true;
+			playerOne.move();
+
+		}
+		if (e.keyCode==39) {
+			rightPress=true;
+			playerOne.move();
+		}
+		if (e.keyCode==37) {
+			leftPress=true;
+			playerOne.move();
+		}
+	}
+	function keyUpAction(e){
+		if (e.keyCode==38) {
+			upPress=false;
+		}
+		if (e.keyCode==40) {
+			downPress=false;
+		}
+		if (e.keyCode==39) {
+			rightPress=false;
+		}
+		if (e.keyCode==37) {
+			leftPress=false;
+		}
+	}
+	makeGems();
+	function makeGemsTrue(){
+		for (var i = 0; i < gems.length; i++) {
+			gems[i].exists=true;
+		}
+	}
+	function loadImage(){
+		for (var c =0 ; c<gridImages.length; c++) {
+			for (var r=0; r<gridImages[c].length; r++) {
+				ctx.drawImage(gridImages[c][r],c*tileWidth,r*tileHeight-50);//,tileWidth,tileHeight);
+			};	
+		};
+		playerOne.draw();
+		for (var i = 0; i <enemies.length; i++) {
+			enemies[i].update();
+			enemies[i].draw();
+			enemies[i].crash();
+		}
+		for (var i = 0; i <gems.length; i++) {
+			if (gems[i].exists) {
+				gems[i].draw();
+				gems[i].colect();
+			}
+		}
+			
+		
+
+		window.requestAnimationFrame(loadImage);
+	}
+	/*var pic=new Image();
+	pic.src='images/char-boy.png';
+	pic.addEventListener('load',showPic,false);
+	function showPic(){
+		ctx.drawImage(pic,canvas.width/2,canvas.height-200);
+	}*/
+
+	
+
+
+</script>	
+</body>
+</html>
